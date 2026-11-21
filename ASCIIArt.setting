@@ -1,0 +1,43 @@
+{
+    Tools = ordered() {
+        ASCIIArt = GroupOperator {
+            Inputs = ordered() {
+                MainInput1 = InstanceInput { SourceOp = "ASCII", Source = "Input" },
+                Columns = InstanceInput { SourceOp = "ASCII", Source = "Columns" },
+                Gradient = InstanceInput { SourceOp = "ASCII", Source = "Gradient" },
+                CustomGradient = InstanceInput { SourceOp = "ASCII", Source = "CustomGradient" },
+                SpaceDensity = InstanceInput { SourceOp = "ASCII", Source = "SpaceDensity" },
+                Style = InstanceInput { SourceOp = "ASCII", Source = "Style" },
+                Transparent = InstanceInput { SourceOp = "ASCII", Source = "Transparent" },
+                Frame = InstanceInput { SourceOp = "ASCII", Source = "Frame" },
+                Sampling = InstanceInput { SourceOp = "ASCII", Source = "Sampling" },
+                Dither = InstanceInput { SourceOp = "ASCII", Source = "Dither" },
+                Crisp = InstanceInput { SourceOp = "ASCII", Source = "Crisp" },
+                Brightness = InstanceInput { SourceOp = "ASCII", Source = "Brightness" },
+                Contrast = InstanceInput { SourceOp = "ASCII", Source = "Contrast" },
+                Saturation = InstanceInput { SourceOp = "ASCII", Source = "Saturation" },
+                Hue = InstanceInput { SourceOp = "ASCII", Source = "Hue" },
+                Grayscale = InstanceInput { SourceOp = "ASCII", Source = "Grayscale" },
+                Sepia = InstanceInput { SourceOp = "ASCII", Source = "Sepia" },
+                Invert = InstanceInput { SourceOp = "ASCII", Source = "Invert" },
+                Sharpness = InstanceInput { SourceOp = "ASCII", Source = "Sharpness" },
+                Edge = InstanceInput { SourceOp = "ASCII", Source = "Edge" },
+                Thresholding = InstanceInput { SourceOp = "ASCII", Source = "Thresholding" },
+                Threshold = InstanceInput { SourceOp = "ASCII", Source = "Threshold" },
+                FontSource = InstanceInput { SourceOp = "ASCII", Source = "FontSource" },
+                FontFamily = InstanceInput { SourceOp = "ASCII", Source = "FontFamily", ControlGroup = 2 },
+                FontStyle = InstanceInput { SourceOp = "ASCII", Source = "FontStyle", ControlGroup = 2 },
+            },
+            Outputs = {
+                MainOutput1 = InstanceOutput { SourceOp = "ASCII", Source = "Output" },
+            },
+            ViewInfo = GroupInfo { Pos = { 0, 0 } },
+            Tools = ordered() {
+                ASCII = Fuse.AsciiArtEffect {
+                    ViewInfo = OperatorInfo { Pos = { 0, 0 } },
+                },
+            },
+        },
+    },
+    ActiveTool = "ASCIIArt",
+}

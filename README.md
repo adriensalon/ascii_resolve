@@ -2,15 +2,22 @@
 
 Fusion effect inspired by [ASCII Art Archive image converter](https://www.asciiart.eu/image-to-ascii) that renders as a grid of ASCII characters. It includes a custom bitmap font and can render glyphs from fonts installed on the system through Fusion's font picker.
 
+demo here
+
 ## Install on Windows
 
-Copy `ASCIIArt.fuse` to `%APPDATA%\Blackmagic Design\DaVinci Resolve\Support\Fusion\Fuses`, or run `InstallASCIIArt.ps1` from this folder:
+Run the installer from this folder:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\InstallASCIIArt.ps1
 ```
 
-Restart Resolve to load the Fuse.
+The installer copies `ASCIIArt.fuse` to `%APPDATA%\Blackmagic Design\DaVinci Resolve\Support\Fusion\Fuses` and packages `ASCIIArt.setting` in `ASCIIArt.drfx` under the adjacent `Templates` folder. The effect requires both files. Restart Resolve after installation.
+
+## Use from the Edit page
+
+1. Open **Effects Library → Toolbox → Effects** and drag **ASCII Art** onto a clip.
+2. Select the clip and open **Inspector → Effects** to adjust the grid, gradient, styling, image, and font controls.
 
 ## Use in Fusion
 
