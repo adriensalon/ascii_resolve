@@ -1,0 +1,585 @@
+FuRegisterClass("AsciiArtEffect", CT_Tool, {
+    REGS_Name = "ASCII Art",
+    REGS_Category = "Fuses\\Stylize",
+    REGS_OpIconString = "ASCII",
+    REGS_OpDescription = "Turn each frame into a grid of ASCII characters",
+    REG_NoObjMatCtrls = true,
+    REG_NoMotionBlurCtrls = true,
+    REG_OpNoMask = true,
+    REG_Version = 1,
+})
+
+local bitmapWidth, bitmapHeight = 6, 9
+local ramps = {
+    " .:-+=*%#@",
+    " .',:;~!+*oexO0#%@",
+    " .:/|\\X#@",
+    "  .,:;*+?%#@",
+}
+
+-- Each pair of hex digits holds one 5-bit row, top first, in ASCII order.
+local glyphRows = {
+    "00000000000000", -- space
+    "04040404040004", -- !
+    "0A0A0A00000000", -- "
+    "0A0A1F0A1F0A0A", -- #
+    "040F140E051E04", -- $
+    "19190204081313", -- %
+    "0C12140815120D", -- &
+    "04040800000000", -- '
+    "02040808080402", -- (
+    "08040202020408", -- )
+    "0004150E150400", -- *
+    "0004041F040400", -- +
+    "00000000000408", -- ,
+    "0000001F000000", -- -
+    "00000000000004", -- .
+    "01010204081010", -- /
+    "0E11131519110E", -- 0
+    "040C040404040E", -- 1
+    "0E11010204081F", -- 2
+    "1E01010601111E", -- 3
+    "02060A121F0202", -- 4
+    "1F101E0101110E", -- 5
+    "0608101E11110E", -- 6
+    "1F010204080808", -- 7
+    "0E11110E11110E", -- 8
+    "0E11110F01020C", -- 9
+    "00000400000400", -- :
+    "00000400000408", -- ;
+    "02040810080402", -- <
+    "00001F001F0000", -- =
+    "08040201020408", -- >
+    "0E110204040004", -- ?
+    "0E11171D17100F", -- @
+    "0E11111F111111", -- A
+    "1E11111E11111E", -- B
+    "0E11101010110E", -- C
+    "1C12111111121C", -- D
+    "1F10101E10101F", -- E
+    "1F10101E101010", -- F
+    "0E11101711110E", -- G
+    "1111111F111111", -- H
+    "0E04040404040E", -- I
+    "0702020202120C", -- J
+    "11121418141211", -- K
+    "1010101010101F", -- L
+    "111B1515111111", -- M
+    "11191513111111", -- N
+    "0E11111111110E", -- O
+    "1E11111E101010", -- P
+    "0E11111115120D", -- Q
+    "1E11111E141211", -- R
+    "0F10100E01011E", -- S
+    "1F040404040404", -- T
+    "1111111111110E", -- U
+    "11111111110A04", -- V
+    "11111115151B11", -- W
+    "11110A040A1111", -- X
+    "11110A04040404", -- Y
+    "1F01020408101F", -- Z
+    "0E08080808080E", -- [
+    "10100804020101", -- backslash
+    "0E02020202020E", -- ]
+    "040A1100000000", -- ^
+    "0000000000001F", -- _
+    "08040200000000", -- grave accent
+    "00000E010F110F", -- a
+    "1010161911111E", -- b
+    "00000E1110110E", -- c
+    "01010D1311110F", -- d
+    "00000E111F100E", -- e
+    "0609081C080808", -- f
+    "000E11110F011E", -- g
+    "10101619111111", -- h
+    "04000C0404040E", -- i
+    "0200060202120C", -- j
+    "101011121C1211", -- k
+    "0C04040404040E", -- l
+    "00001A15151515", -- m
+    "00001619111111", -- n
+    "00000E1111110E", -- o
+    "00001E11111E10", -- p
+    "00000F11110F01", -- q
+    "00001619101010", -- r
+    "00000F100E011E", -- s
+    "08081C08080906", -- t
+    "0000111111130D", -- u
+    "00001111110A04", -- v
+    "0000111115150A", -- w
+    "0000110A040A11", -- x
+    "00001111110F01", -- y
+    "00001F0204081F", -- z
+    "02040408040402", -- {
+    "04040404040404", -- |
+    "08040402040408", -- }
+    "00000009160000", -- ~
+}
+
+local floor, min, max = math.floor, math.min, math.max
+local bitmap = { width = bitmapWidth, height = bitmapHeight, glyphs = {} }
+for index, encoded in ipairs(glyphRows) do
+    local dots = {}
+    for y = 0, bitmapHeight - 1 do
+        local row = 0
+        if y > 0 and y < bitmapHeight - 1 then
+            local offset = 2 * (7 - y) + 1
+            row = tonumber(encoded:sub(offset, offset + 1), 16)
+        end
+        for x = 0, bitmapWidth - 1 do
+            dots[#dots + 1] = x < 5 and floor(row / 2 ^ (4 - x)) % 2 or 0
+        end
+    end
+    bitmap.glyphs[index + 31] = dots
+end
+
+local bayer = {
+    0, 8, 2, 10,
+    12, 4, 14, 6,
+    3, 11, 1, 9,
+    15, 7, 13, 5,
+}
+
+local function slider(tool, label, id, default, low, high, integer)
+    return tool:AddInput(label, id, {
+        LINKID_DataType = "Number",
+        INPID_InputControl = "SliderControl",
+        INP_Default = default,
+        INP_MinScale = low,
+        INP_MaxScale = high,
+        INP_MinAllowed = low,
+        INP_MaxAllowed = high,
+        INP_Integer = integer or false,
+    })
+end
+
+local function checkbox(tool, label, id)
+    return tool:AddInput(label, id, {
+        LINKID_DataType = "Number",
+        INPID_InputControl = "CheckboxControl",
+        INP_Default = 0,
+        INP_Integer = true,
+    })
+end
+
+local function menu(tool, label, id, options)
+    local attrs = {
+        LINKID_DataType = "Number",
+        INPID_InputControl = "ComboControl",
+        INP_Default = 0,
+        INP_Integer = true,
+    }
+    for _, option in ipairs(options) do
+        attrs[#attrs + 1] = { CCS_AddString = option }
+    end
+    return tool:AddInput(label, id, attrs)
+end
+
+function Create()
+    InImage = self:AddInput("Input", "Input", {
+        LINKID_DataType = "Image",
+        LINK_Main = 1,
+        INP_AcceptsDoD = false,
+    })
+    OutImage = self:AddOutput("Output", "Output", {
+        LINKID_DataType = "Image",
+        LINK_Main = 1,
+    })
+
+    InColumns = slider(self, "Characters Across", "Columns", 100, 4, 256, true)
+    InGradient = menu(self, "ASCII Gradient", "Gradient", {
+        "Classic", "Detailed", "Line Art", "Punctuation", "Custom",
+    })
+    InCustom = self:AddInput("Custom Gradient (Sparse to Dense)", "CustomGradient", {
+        LINKID_DataType = "Text",
+        INPID_InputControl = "TextEditControl",
+        INPS_DefaultText = ramps[1],
+        TEC_Lines = 1,
+        TEC_CharLimit = 95,
+    })
+    InSpaces = slider(self, "Space Density", "SpaceDensity", 0, 0, 0.95)
+    InStyle = menu(self, "Style", "Style", {
+        "White on Black", "Black on White", "Source Color",
+    })
+    InTransparent = checkbox(self, "Transparent Background", "Transparent")
+    InFrame = slider(self, "Transparent Frame (px)", "Frame", 0, 0, 500, true)
+    InSampling = menu(self, "Cell Sampling", "Sampling", {
+        "Box Average", "Nearest Pixel",
+    })
+    InDither = checkbox(self, "Ordered Dither", "Dither")
+    InCrisp = checkbox(self, "Crisp Pixels", "Crisp")
+
+    self:AddControlPage("Image")
+    InBrightness = slider(self, "Brightness", "Brightness", 1, 0, 3)
+    InContrast = slider(self, "Contrast", "Contrast", 1, 0, 3)
+    InSaturation = slider(self, "Saturation", "Saturation", 1, 0, 3)
+    InHue = slider(self, "Hue", "Hue", 0, -180, 180)
+    InGrayscale = slider(self, "Grayscale", "Grayscale", 0, 0, 1)
+    InSepia = slider(self, "Sepia", "Sepia", 0, 0, 1)
+    InInvert = slider(self, "Invert Colors", "Invert", 0, 0, 1)
+    InSharpness = slider(self, "Sharpness", "Sharpness", 0, 0, 2)
+    InEdge = slider(self, "Edge Detection", "Edge", 0, 0, 1)
+    InThresholding = checkbox(self, "Enable Threshold", "Thresholding")
+    InThreshold = slider(self, "Threshold", "Threshold", 0.5, 0, 1)
+
+    self:AddControlPage("Font")
+    InFontSource = menu(self, "Font Source", "FontSource", { "Embedded Bitmap", "Installed Font" })
+    InFontFamily = self:AddInput("Font Family", "FontFamily", {
+        LINKID_DataType = "Text",
+        INPID_InputControl = "FontFileControl",
+        IC_ControlGroup = 2,
+        IC_ControlID = 0,
+        INPS_DefaultText = "Arial",
+        INP_Required = false,
+    })
+    InFontStyle = self:AddInput("Font Style", "FontStyle", {
+        LINKID_DataType = "Text",
+        INPID_InputControl = "FontFileControl",
+        IC_ControlGroup = 2,
+        IC_ControlID = 1,
+        INPS_DefaultText = "Regular",
+        INP_Required = false,
+    })
+end
+
+local function clamp(value)
+    return min(1, max(0, value))
+end
+
+local function luma(r, g, b)
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+end
+
+local function adjustColor(r, g, b, settings)
+    local y = luma(r, g, b)
+    if settings.rotateHue then
+        -- Rotate the two chroma components around the luma axis.
+        local u, v = (b - y) / 1.8556, (r - y) / 1.5748
+        local uRotated = u * settings.cosHue - v * settings.sinHue
+        local vRotated = u * settings.sinHue + v * settings.cosHue
+        r, b = y + 1.5748 * vRotated, y + 1.8556 * uRotated
+        g = (y - 0.2126 * r - 0.0722 * b) / 0.7152
+    end
+    local saturation = settings.saturation
+    r = (y + (r - y) * saturation) * settings.gain + settings.offset
+    g = (y + (g - y) * saturation) * settings.gain + settings.offset
+    b = (y + (b - y) * saturation) * settings.gain + settings.offset
+    if settings.sepia > 0 then
+        local sr = 0.393 * r + 0.769 * g + 0.189 * b
+        local sg = 0.349 * r + 0.686 * g + 0.168 * b
+        local sb = 0.272 * r + 0.534 * g + 0.131 * b
+        r = r + (sr - r) * settings.sepia
+        g = g + (sg - g) * settings.sepia
+        b = b + (sb - b) * settings.sepia
+    end
+    return clamp(r * settings.invertScale + settings.invert),
+        clamp(g * settings.invertScale + settings.invert),
+        clamp(b * settings.invertScale + settings.invert)
+end
+
+local function sampleCells(image, columns, rows, settings)
+    local cells = {}
+    local pixel, canvas = Pixel(), Pixel()
+    local data = image.DataWindow
+    image:GetCanvasColor(canvas)
+    for y = 0, rows - 1 do
+        for x = 0, columns - 1 do
+            local sample = canvas
+            if x >= data.left and x < data.right and y >= data.bottom and y < data.top then
+                image:GetPixel(x, y, pixel)
+                sample = pixel
+            end
+            local a = clamp(sample.A)
+            local r, g, b = 0, 0, 0
+            if a > 0.00001 then
+                r, g, b = adjustColor(sample.R / a, sample.G / a, sample.B / a, settings)
+            end
+            cells[#cells + 1] = { r = r, g = g, b = b, a = a, tone = luma(r, g, b) }
+        end
+    end
+    return cells
+end
+
+local function selectGlyph(cells, x, y, columns, rows, settings)
+    local index = y * columns + x + 1
+    local tone = cells[index].tone
+    if settings.sharpness > 0 or settings.edge > 0 then
+        local left = cells[y * columns + max(0, x - 1) + 1].tone
+        local right = cells[y * columns + min(columns - 1, x + 1) + 1].tone
+        local bottom = cells[max(0, y - 1) * columns + x + 1].tone
+        local top = cells[min(rows - 1, y + 1) * columns + x + 1].tone
+        local edge = clamp(math.sqrt((right - left) ^ 2 + (top - bottom) ^ 2))
+        tone = tone + settings.sharpness * (tone - (left + right + bottom + top) * 0.25)
+        tone = tone * (1 - settings.edge) + edge * settings.edge
+    end
+    if settings.threshold then
+        tone = tone >= settings.threshold and 1 or 0
+    end
+    if settings.style == 1 then
+        tone = 1 - tone
+    end
+    if cells[index].a == 0 or tone < settings.spaces then
+        return 32
+    end
+    local level = clamp((tone - settings.spaces) / (1 - settings.spaces)) * (#settings.ramp - 1)
+    local rounding = 0.5
+    if settings.dither and not settings.threshold then
+        rounding = (bayer[(y % 4) * 4 + (x % 4) + 1] + 0.5) / 16
+    end
+    return settings.ramp:byte(floor(level + rounding) + 1)
+end
+
+local function makeScratch(width, height)
+    return Image({
+        { IMG_Channel = "Red" },
+        { IMG_Channel = "Green" },
+        { IMG_Channel = "Blue" },
+        { IMG_Channel = "Alpha" },
+        IMG_Width = width,
+        IMG_Height = height,
+        IMG_Depth = 8,
+        IMG_ProxyScale = 1,
+        IMG_Quality = true,
+    })
+end
+
+local function buildFont(family, style)
+    if FontManager then
+        local families = FontManager:GetFontList() or {}
+        if not next(families) then
+            FontManager:ScanDir()
+            families = FontManager:GetFontList() or {}
+        end
+        local styles = families[family]
+        if not styles then
+            return nil
+        end
+        if not styles[style] then
+            style = styles.Regular and "Regular" or next(styles)
+        end
+    end
+
+    local font = TextStyleFont(family, style)
+    local metrics = font and TextStyleFontMetrics(font)
+    if not metrics or not metrics.Scale or metrics.Scale <= 0 then
+        return nil
+    end
+    local ascent, descent = math.abs(metrics.TextAscent), math.abs(metrics.TextDescent)
+    local widest = 0
+    for code = 33, 126 do
+        widest = max(widest, metrics:CharacterWidth(code) or 0)
+    end
+    if widest <= 0 or ascent + descent <= 0 then
+        return nil
+    end
+
+    local width, height = 2 * bitmap.width, 2 * bitmap.height
+    local aspect = height / width
+    -- Fusion reports advances and vertical metrics in tenths of its shape coordinates.
+    local size = min(0.84 / widest, (aspect - 0.18) / (ascent + descent)) / 10
+    local baseline = (aspect - (ascent + descent) * size * 10) / 2 + descent * size * 10
+    local scale = size / metrics.Scale
+    local matrix = Matrix4()
+    matrix:Scale(scale, scale, 1)
+    matrix:Move(0.5, baseline, 0)
+
+    local mask = makeScratch(width, height)
+    local clear, pixel = Pixel(), Pixel()
+    local fill = FillStyle()
+    local paint = ChannelStyle()
+    paint.Color = Pixel({ R = 1, G = 1, B = 1, A = 1 })
+    local face = { width = width, height = height, glyphs = {} }
+    local drawn = 0
+    for code = 32, 126 do
+        local shape
+        if code ~= 32 then
+            shape = metrics:GetCharacterShape(code, false)
+        end
+        local coverage, hasInk = {}, false
+        if shape then
+            mask:Fill(clear)
+            local channel = ImageChannel(mask, 8)
+            channel:SetStyleFill(fill)
+            channel:ShapeFill(shape:TransformOfShape(matrix))
+            channel:PutToImage("CM_Merge", paint)
+            for y = 0, height - 1 do
+                for x = 0, width - 1 do
+                    mask:GetPixel(x, y, pixel)
+                    local alpha = clamp(pixel.A)
+                    coverage[#coverage + 1] = alpha
+                    hasInk = hasInk or alpha > 0
+                end
+            end
+        end
+        if hasInk then
+            drawn = drawn + 1
+        else
+            -- Keep the requested ASCII character visible if the font lacks its outline.
+            local fallback = bitmap.glyphs[code]
+            for y = 0, height - 1 do
+                for x = 0, width - 1 do
+                    coverage[y * width + x + 1] = fallback[floor(y / 2) * bitmap.width + floor(x / 2) + 1]
+                end
+            end
+        end
+        face.glyphs[code] = coverage
+    end
+    return drawn > 0 and face or nil
+end
+
+local cachedFont
+local function installedFont(family, style)
+    if cachedFont and cachedFont.family == family and cachedFont.style == style then
+        return cachedFont.face
+    end
+    local ok, face = pcall(buildFont, family, style)
+    if not ok or not face then
+        print(("ASCII Art: could not render font %q (%s). Using Embedded Bitmap. %s")
+            :format(family, style, ok and "" or tostring(face)))
+        face = bitmap
+    end
+    cachedFont = { family = family, style = style, face = face }
+    return face
+end
+
+local function drawGlyphs(raster, cells, columns, rows, settings, face)
+    local ink, paper, mixed = Pixel(), Pixel(), Pixel()
+    local width, height = face.width, face.height
+    for y = 0, rows - 1 do
+        if self.Status ~= "OK" then
+            return false
+        end
+        for x = 0, columns - 1 do
+            local cell = cells[y * columns + x + 1]
+            local dots = face.glyphs[selectGlyph(cells, x, y, columns, rows, settings)]
+            local inkValue = settings.style == 0 and cell.a or 0
+            local r, g, b = inkValue, inkValue, inkValue
+            if settings.style == 2 then
+                r, g, b = cell.r * cell.a, cell.g * cell.a, cell.b * cell.a
+            end
+            local paperAlpha = settings.transparent and 0 or cell.a
+            local paperValue = settings.style == 1 and paperAlpha or 0
+            ink.R, ink.G, ink.B, ink.A = r, g, b, cell.a
+            paper.R, paper.G, paper.B, paper.A = paperValue, paperValue, paperValue, paperAlpha
+            local tintR, tintG, tintB = r - paperValue, g - paperValue, b - paperValue
+            local tintAlpha = cell.a - paperAlpha
+
+            local left, bottom = x * width, y * height
+            local dot = 1
+            for dy = 0, height - 1 do
+                for dx = 0, width - 1 do
+                    local coverage = dots[dot]
+                    local pixel = paper
+                    if coverage == 1 then
+                        pixel = ink
+                    elseif coverage > 0 then
+                        mixed.R = paperValue + tintR * coverage
+                        mixed.G = paperValue + tintG * coverage
+                        mixed.B = paperValue + tintB * coverage
+                        mixed.A = paperAlpha + tintAlpha * coverage
+                        pixel = mixed
+                    end
+                    raster:SetPixel(left + dx, bottom + dy, pixel)
+                    dot = dot + 1
+                end
+            end
+        end
+    end
+    return true
+end
+
+function Process(req)
+    local source = InImage:GetValue(req)
+    if not source then
+        OutImage:Set(req, nil)
+        return
+    end
+
+    local width, height = source.Width, source.Height
+    local precalc = req:IsPreCalc()
+    local output = Image({
+        IMG_Like = source,
+        IMG_CopyChannels = false,
+        IMG_NoData = precalc,
+    })
+    if precalc then
+        OutImage:Set(req, output)
+        return
+    end
+
+    local function number(input)
+        return input:GetValue(req).Value
+    end
+    local face = bitmap
+    if InFontSource and number(InFontSource) == 1 then
+        local family = InFontFamily:GetValue(req)
+        local style = InFontStyle:GetValue(req)
+        face = installedFont(family and family.Value or "Arial", style and style.Value or "Regular")
+    end
+
+    local ramp = ramps[floor(number(InGradient)) + 1]
+    if not ramp then
+        local custom = InCustom:GetValue(req)
+        ramp = (custom and custom.Value or ""):gsub("[^ -~]", "")
+        if #ramp == 0 then
+            ramp = ramps[1]
+        end
+    end
+    local contrast, invert, hue = number(InContrast), number(InInvert), number(InHue)
+    local settings = {
+        ramp = ramp,
+        spaces = number(InSpaces),
+        style = floor(number(InStyle)),
+        transparent = number(InTransparent) == 1,
+        dither = number(InDither) == 1,
+        gain = number(InBrightness) * contrast,
+        offset = 0.5 * (1 - contrast),
+        saturation = number(InSaturation) * (1 - number(InGrayscale)),
+        rotateHue = hue ~= 0,
+        sinHue = math.sin(math.rad(hue)),
+        cosHue = math.cos(math.rad(hue)),
+        sepia = number(InSepia),
+        invert = invert,
+        invertScale = 1 - 2 * invert,
+        sharpness = number(InSharpness),
+        edge = number(InEdge),
+        threshold = number(InThresholding) == 1 and number(InThreshold) or false,
+    }
+
+    local realWidth = source.OriginalWidth or width
+    if realWidth < width then
+        realWidth = width
+    end
+    local border = min(floor(number(InFrame) * width / realWidth + 0.5),
+        floor((min(width, height) - 1) / 2))
+    local innerWidth, innerHeight = width - 2 * border, height - 2 * border
+    local columns = max(1, min(floor(number(InColumns) + 0.5), innerWidth))
+    local xScale, yScale = source.XScale or 1, source.YScale or 1
+    local displayRatio = innerHeight * yScale / (innerWidth * xScale)
+    local rowsPerColumn = displayRatio * face.width / face.height
+    -- Keep the work bounded for tall frames and extreme pixel aspect ratios.
+    columns = max(1, min(columns, floor(math.sqrt(80000 / rowsPerColumn))))
+    local rows = max(1, min(floor(columns * rowsPerColumn + 0.5), innerHeight, 1024))
+
+    local sample = makeScratch(columns, rows)
+    local samplingFilter = number(InSampling) == 0 and "Box" or "Nearest"
+    source:Resize(sample, { RSZ_Filter = samplingFilter })
+    local cells = sampleCells(sample, columns, rows, settings)
+    local raster = makeScratch(columns * face.width, rows * face.height)
+    if not drawGlyphs(raster, cells, columns, rows, settings, face) then
+        return
+    end
+
+    local filter = "Linear"
+    if number(InCrisp) == 1 then
+        filter = "Nearest"
+    elseif raster.Width > innerWidth or raster.Height > innerHeight then
+        filter = "Box"
+    end
+    local inner = border > 0 and makeScratch(innerWidth, innerHeight) or output
+    raster:Resize(inner, { RSZ_Filter = filter })
+    if border > 0 then
+        inner:Crop(output, { CROP_XOffset = -border, CROP_YOffset = -border })
+    end
+    OutImage:Set(req, output)
+end
