@@ -2,7 +2,7 @@
 
 Fusion effect inspired by [ASCII Art Archive image converter](https://www.asciiart.eu/image-to-ascii) that renders as a grid of ASCII characters. It includes a custom bitmap font and can render glyphs from fonts installed on the system through Fusion's font picker.
 
-demo here
+https://github.com/user-attachments/assets/447d23aa-b808-4862-b47c-61fc037a1e8e
 
 ## Install on Windows
 
