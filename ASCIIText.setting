@@ -1,0 +1,32 @@
+{
+    Tools = ordered() {
+        ASCIIText = GroupOperator {
+            Inputs = ordered() {
+                StyledText = InstanceInput { SourceOp = "Banner", Source = "StyledText" },
+                BannerFont = InstanceInput { SourceOp = "Banner", Source = "BannerFont" },
+                Spacing = InstanceInput { SourceOp = "Banner", Source = "Spacing" },
+                WrapWidth = InstanceInput { SourceOp = "Banner", Source = "WrapWidth" },
+                Alignment = InstanceInput { SourceOp = "Banner", Source = "Alignment" },
+                Center = InstanceInput { SourceOp = "Banner", Source = "Center" },
+                Size = InstanceInput { SourceOp = "Banner", Source = "Size" },
+                FontSource = InstanceInput { SourceOp = "Banner", Source = "FontSource" },
+                FontFamily = InstanceInput { SourceOp = "Banner", Source = "FontFamily", ControlGroup = 2 },
+                FontStyle = InstanceInput { SourceOp = "Banner", Source = "FontStyle", ControlGroup = 2 },
+                Red = InstanceInput { SourceOp = "Banner", Source = "Red", ControlGroup = 3 },
+                Green = InstanceInput { SourceOp = "Banner", Source = "Green", ControlGroup = 3 },
+                Blue = InstanceInput { SourceOp = "Banner", Source = "Blue", ControlGroup = 3 },
+                Alpha = InstanceInput { SourceOp = "Banner", Source = "Alpha", ControlGroup = 3 },
+            },
+            Outputs = {
+                MainOutput1 = InstanceOutput { SourceOp = "Banner", Source = "Output" },
+            },
+            ViewInfo = GroupInfo { Pos = { 0, 0 } },
+            Tools = ordered() {
+                Banner = Fuse.AsciiTextTitle {
+                    ViewInfo = OperatorInfo { Pos = { 0, 0 } },
+                },
+            },
+        },
+    },
+    ActiveTool = "ASCIIText",
+}
